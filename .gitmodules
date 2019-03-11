@@ -1,0 +1,3 @@
+[submodule "Tutorials"]
+	path = Tutorials
+	url = https://github.com/SuperV1234/Tutorials.git
