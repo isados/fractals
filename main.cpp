@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <complex>
+#include <unordered_map>
+#include <math.h>
 #include "timer.cpp"
 using namespace sf;
 using namespace std;
@@ -10,7 +12,7 @@ using namespace std;
 #define SIZE WIDTH, HEIGHT
 #define MAX_DELAY 1000
 using ld = double;
-
+// static Color color_vec[]= {Color::White,Color::Black};
 template<typename T>
 vector<ld> linspace(T start_in, T end_in, int num_in)
   {
@@ -41,9 +43,8 @@ vector<ld> linspace(T start_in, T end_in, int num_in)
 
 class Mandelbrot: public VertexArray{
 public:
-  Mandelbrot(ld x_srt,ld x_stp,ld y_srt,ld y_stp
-            ,size_t wd, size_t ht
-            ,int iters=10
+  Mandelbrot(size_t wd, size_t ht ,int iters=20,
+            ld x_srt=-2,ld x_stp=1,ld y_srt=-1,ld y_stp=1
             )
   :VertexArray{Points,wd*ht},
     width{wd}, height{ht}
@@ -57,21 +58,20 @@ public:
         (*this)[index].color = Color::Black;
         index++;
       }
-    // generate_set(x_srt, x_stp, y_srt, y_stp ,max_iterations);
+    generate_set(max_iterations, x_srt, x_stp, y_srt, y_stp);
   }
 
-  void generate_set(ld x_srt,ld x_stp,ld y_srt,ld y_stp
-    ,int iters)
+  void generate_set(int iters,
+    ld x_srt=-2, ld x_stp=1, ld y_srt=-1, ld y_stp=1)
     {
       int index=0;
+      map_range(iters);
       vector<ld> x_range = linspace(x_srt,x_stp,width);
       vector<ld> y_range = linspace(y_srt,y_stp,height);
       for(uint row=0; row < width ;row++)
       for(uint colum=0; colum < height ;colum++)
-        { auto &color_pixel = (*this)[index++].color;
-          if (color_pixel == Color::Black)
-            color_pixel = retrieve_color({x_range[row],y_range[colum]},iters);
-        }
+          (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},iters);
+
     }
 
   int getMaxIters(){
@@ -82,24 +82,33 @@ private:
   size_t width;
   size_t height;
   int max_iterations;
-  Color retrieve_color(const complex<ld> &c, int max_iters){
+  unordered_map <uint, Color> palette;
+
+  Color retrieve_color(const complex<ld> &c, uint max_iters){
     complex<ld> z{0};
-    for (int iter = 0; iter <= max_iters; iter++){
+    for (uint iter = 0; iter < max_iters; iter++){
       z = pow(z,2) + c;
       if (abs(z) > 3)
-        return Color::White;
+        return palette[iter];
     }
-    return Color::Black;
+    return palette[max_iters-1];
   }
 
-
+  void map_range(float iters){
+    for (float value=0;value<(float)iters;value++)
+    {
+      // Blue to Black
+      const float start= 131071 - 255, end = 131071 ;
+      palette[(uint)value] = Color((uint)(round((value/((float)iters-1))*(start-end))+start));
+    }
+  }
 };
 
 int main(){
     RenderWindow window(VideoMode(SIZE), "Fractal");
-    window.setFramerateLimit(40);
+    window.setFramerateLimit(60);
 
-    Mandelbrot img(-2,1,-1,1,WIDTH,HEIGHT,20);
+    Mandelbrot img(SIZE);
 
     int iter=0;
     int max_iterations = img.getMaxIters();
@@ -107,7 +116,7 @@ int main(){
     while (window.isOpen())
     {
         if (iter<=max_iterations)
-          img.generate_set(-2,1,-1,1,iter++);
+          img.generate_set(iter++);
 
         Event event;
         while (window.pollEvent(event))
@@ -117,6 +126,7 @@ int main(){
         }
 
         window.clear();
+        if(Keyboard::isKeyPressed(Keyboard::Key::Escape)) break;
         window.draw(img);
         window.display();
 
