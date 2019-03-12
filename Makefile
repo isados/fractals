@@ -1,4 +1,4 @@
-LIBS= -lsfml-audio -lsfml-graphics -lsfml-system -lsfml-window
+LIBS= -lsfml-audio -lsfml-graphics -lsfml-system -lsfml-window -pthread
 CCFLAGS = -Wall -Wextra -Wpedantic -O3
 NAME_OF_EXEC=main
 PATH_TO_ARKANOID=Tutorials/DiveIntoC++11/1_Arkanoid/
