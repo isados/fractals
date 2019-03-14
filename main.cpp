@@ -13,7 +13,7 @@ using namespace std;
 #define HEIGHT 700
 #define SIZE WIDTH, HEIGHT
 #define MAX_DELAY 1000
-#define NUM_THREADS 32
+#define NUM_THREADS 128
 using ld = double;
 
 template<typename T>
@@ -50,8 +50,8 @@ public:
             ld x_srt=-2,ld x_stp=1,ld y_srt=-1,ld y_stp=1
             )
   :VertexArray{Points,wd*ht},
-    width{wd}, height{ht}
-    ,max_iterations{iters},
+    width{wd}, height{ht},
+    max_iterations{iters},
     x_srt{-2}, x_stp{1}, y_srt{-1}, y_stp{1}
   {
     int index=0;
@@ -62,66 +62,66 @@ public:
         (*this)[index].color = Color::Black;
         index++;
       }
-    //Time both functions
-    Timer tr;
+
     generate_palette(max_iterations);
 
     //Generate ranges for plotting
     x_range = linspace(x_srt,x_stp,width);
     y_range = linspace(y_srt,y_stp,height);
 
-    generate_set_threaded(x_srt, x_stp, y_srt, y_stp);
+    //Time both functions
+    Timer tr;
+
+    generate_set(x_srt, x_stp, y_srt, y_stp,true);
     cout<<"Time for threaded function "
         <<tr.elapsed()/1000<<"s"
         <<" with "<<NUM_THREADS<<" threads"<<endl;
 
-    generate_set(x_srt, x_stp, y_srt, y_stp);
-    cout<<"Time for normal function "
-        <<tr.elapsed()/1000<<"s"<<endl;
+    // tr.reset();
+    // generate_set(x_srt, x_stp, y_srt, y_stp);
+    // cout<<"Time for normal function "
+    //     <<tr.elapsed()/1000<<"s"<<endl;
 
   }
 
-  void generate_set(ld x_srt=-2, ld x_stp=1, ld y_srt=-1, ld y_stp=1)
+  void generate_set(ld x_srt=-2, ld x_stp=1, ld y_srt=-1, ld y_stp=1, bool threaded=false)
     {
       if (this->x_srt!=x_srt || this->x_stp!=x_stp)
-          x_range = linspace(x_srt,x_stp,width);
+        x_range = linspace(x_srt,x_stp,width);
       if (this->y_srt!=y_srt || this->y_stp!=y_stp)
-          y_range = linspace(y_srt,y_stp,height);
+        y_range = linspace(y_srt,y_stp,height);
 
-      int index=0;
-      for(uint row=0; row < width ;row++)
-      for(uint colum=0; colum < height ;colum++)
-          (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},max_iterations);
-    }
-
-  void generate_set_threaded(ld x_srt=-2, ld x_stp=1, ld y_srt=-1, ld y_stp=1)
-    {
-
-      if (this->x_srt!=x_srt || this->x_stp!=x_stp)
-          x_range = linspace(x_srt,x_stp,width);
-      if (this->y_srt!=y_srt || this->y_stp!=y_stp)
-          y_range = linspace(y_srt,y_stp,height);
-
-      uint batch_size, rem;
-      batch_size = width / NUM_THREADS; rem = width % NUM_THREADS;
-
-      vector<thread> threads;
-      uint scale = 0;
-      for (;scale<NUM_THREADS-1; scale++){
-        threads.push_back(thread(&Mandelbrot::threaded_func, this,
-          batch_size*scale, batch_size*(scale+1)));
+      if (!threaded) {
+        int index=0;
+        for(uint row=0; row < width ;row++)
+        for(uint colum=0; colum < height ;colum++)
+            (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},max_iterations);
       }
-      threads.push_back(thread(&Mandelbrot::threaded_func, this,
-        batch_size*scale, batch_size*(scale+1)+rem));
+      else{
+          uint batch_size, rem;
+          batch_size = width / NUM_THREADS; rem = width % NUM_THREADS;
 
-      //Check for completion of threads
-      for (thread &x : threads) {x.join();}
+          vector<thread> threads;
+          uint scale = 0;
+          for (;scale<NUM_THREADS-1; scale++){
+            threads.push_back(thread(&Mandelbrot::threaded_func, this,
+              batch_size*scale, batch_size*(scale+1)));
+          }
+          threads.push_back(thread(&Mandelbrot::threaded_func, this,
+            batch_size*scale, batch_size*(scale+1)+rem));
+
+          //Check for completion of threads
+          for (thread &x : threads) {x.join();}
+      }
     }
 
-      void generate_sequence(uint iters){
+  void generate_set(bool threaded){
+    generate_set(x_srt, x_stp, y_srt, y_stp, threaded);}
+
+  void generate_sequence(int iters){
         auto temp = max_iterations;
         max_iterations = iters;
-        generate_set_threaded();
+        generate_set(true);
         max_iterations = temp;
       }
   int getMaxIters(){return max_iterations;}
@@ -137,8 +137,7 @@ private:
   vector<ld> y_range;
   unordered_map <uint, Color> palette;
 
-  void threaded_func(uint start, uint end)
-    {
+  void threaded_func(uint start, uint end){
       uint index = start * height;
       for(uint row = start; row < end ;row++)
         for(uint colum=0; colum < height ;colum++)
@@ -157,10 +156,13 @@ private:
 
   void generate_palette(float iters){
     // Blue to Black Palette
-    constexpr uint start = 0, end = 0xFF;
-    const uint diff = end - start;
-    for (float value=0;value<iters;value++)
-      palette[(uint)value] = Color(0, 0, end - round((value/(iters-1))*diff));
+    constexpr Uint32 start = 0, end = 0xFFFFFF;
+    const Uint32 range = end - start;
+    Uint32 res = 0;
+    for (float value=0;value<iters;value++){
+      res = end - round((value/(iters-1))*range);
+      palette[(uint)value] = Color( (res<<8) + 0xFF );
+    }
 
   }
 };
@@ -197,22 +199,26 @@ void zoomin(Mandelbrot& plot){
   //Execution Phase
 
 
-  plot.generate_set_threaded(x_srt, x_end, y_srt, y_end);
+  plot.generate_set(x_srt, x_end, y_srt, y_end,true);
   // plot.generate_set(x_srt, x_end, y_srt, y_end);
   --num_zooms;
 }
 
 }
 
-int main(){
+int main(int argc, char** args)
+{
     RenderWindow window(VideoMode(SIZE), "Fractal");
     window.setFramerateLimit(60);
 
-    // Mandelbrot img(SIZE,40,-2,-.5,-0.5,0.5);
-    Mandelbrot img(SIZE,500);
+    // Check for input arguments, specifically for number of iterations 'i'
+    string i = "25";
+    if (argc > 1) {i = args[1];}
+
+    Mandelbrot img(SIZE,stoul(i));
 
     int iter=0;
-    int max_iterations = 50;
+    int max_iterations = 400;
 
     while (window.isOpen())
     {
