@@ -119,10 +119,11 @@ public:
     generate_set(x_srt, x_stp, y_srt, y_stp, threaded);}
 
   void generate_sequence(int iters){
-        auto temp = max_iterations;
-        max_iterations = iters;
+        int temp{this->max_iterations};
+        this->max_iterations = iters;
+        generate_palette(this->max_iterations);
         generate_set(true);
-        max_iterations = temp;
+        this->max_iterations = temp;
       }
   int getMaxIters(){return max_iterations;}
   float getHeight(){return height;}
@@ -137,18 +138,20 @@ private:
   vector<ld> y_range;
   unordered_map <uint, Color> palette;
 
-  void threaded_func(uint start, uint end){
+  inline void threaded_func(uint start, uint end){
       uint index = start * height;
       for(uint row = start; row < end ;row++)
         for(uint colum=0; colum < height ;colum++)
           (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},max_iterations);
     }
 
-  Color retrieve_color(const complex<ld> &c, uint max_iters){
+inline  Color retrieve_color(const complex<ld> &c, uint max_iters){
     complex<ld> z{0};
+    constexpr uint limit = 300;
     for (uint iter = 0; iter < max_iters; iter++){
+    // for (uint iter = 0; iter < limit; iter++){
       z = pow(z,2) + c;
-      if (abs(z) > 3)
+      if (abs(z) > 4)
         return palette[iter];
     }
     return palette[max_iters-1];
@@ -196,9 +199,9 @@ void zoomin(Mandelbrot& plot){
       y_end -= scale * ydelta;
       y_srt += scale * ydelta;
   }
+
+
   //Execution Phase
-
-
   plot.generate_set(x_srt, x_end, y_srt, y_end,true);
   // plot.generate_set(x_srt, x_end, y_srt, y_end);
   --num_zooms;
@@ -215,15 +218,18 @@ int main(int argc, char** args)
     string i = "25";
     if (argc > 1) {i = args[1];}
 
+    // Mandelbrot img(SIZE,stoul(i),-5,1,-2,2);
     Mandelbrot img(SIZE,stoul(i));
 
-    int iter=0;
-    int max_iterations = 400;
+    int iter=5;
+    int max_iterations = 5000;
 
     while (window.isOpen())
     {
-        // if (iter<=max_iterations)
-        //   img.generate_sequence(iter++);
+        // if (iter<=max_iterations){
+        //   img.generate_sequence(iter+=100);
+        //   cout<<iter<<endl;
+        // }
 
         // zoomin(img);
 
