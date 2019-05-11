@@ -1,12 +1,12 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <thread>
-#include <mutex>
 #include <complex>
 #include <unordered_map>
 #include <math.h>
 #include "timer.hpp"
 #include "image.hpp"
+#include <cmath>
 using namespace sf;
 using namespace std;
 
@@ -15,6 +15,8 @@ using namespace std;
 #define SIZE WIDTH, HEIGHT
 #define MAX_DELAY 1000
 #define NUM_THREADS 128
+
+//Working with double seems to be the fastest
 using ld = double;
 
 template<typename T>
@@ -64,7 +66,7 @@ public:
         index++;
       }
 
-    generate_palette(max_iterations);
+    // generate_palette(max_iterations);
 
     //Generate ranges for plotting
     x_range = linspace(x_srt,x_stp,width);
@@ -122,7 +124,7 @@ public:
   void generate_sequence(int iters){
         int temp{this->max_iterations};
         this->max_iterations = iters;
-        generate_palette(this->max_iterations);
+        // generate_palette(this->max_iterations);
         generate_set(true);
         this->max_iterations = temp;
       }
@@ -137,7 +139,7 @@ private:
   ld x_srt, x_stp, y_srt, y_stp;
   vector<ld> x_range;
   vector<ld> y_range;
-  unordered_map <uint, Color> palette;
+  // unordered_map <uint, Color> palette;
 
   inline void threaded_func(uint start, uint end){
       uint index = start * width;
@@ -146,29 +148,36 @@ private:
           (*this)[index++].color = retrieve_color({x_range[x],y_range[y]},max_iterations);
     }
 
-inline  Color retrieve_color(const complex<ld> &c, uint max_iters){
-    complex<ld> z{0};
-    constexpr uint limit = 300;
-    for (uint iter = 0; iter < max_iters; iter++){
-    // for (uint iter = 0; iter < limit; iter++){
-      z = pow(z,2) + c;
-      if (abs(z) > 4)
-        return palette[iter];
-    }
-    return palette[max_iters-1];
-  }
+  inline  Color retrieve_color(const complex<ld> &c, uint max_iters){
+      complex<ld> z{0};
+      ld sn = 0,dist;
 
-  void generate_palette(float iters){
-    // Blue to Black Palette
-    constexpr Uint32 start = 0, end = 0xFFFFFF;
-    const Uint32 range = end - start;
-    Uint32 res = 0;
-    for (float value=0;value<iters;value++){
-      res = end - round((value/(iters-1))*range);
-      palette[(uint)value] = Color( (res<<8) + 0xFF );
+      constexpr ld ESCAPE_RADIUS = 2;
+      uint iter = 0;
+      for (; iter < max_iters; iter++){
+        z = pow(z,2) + c;
+        dist = abs(z);
+        if (dist > ESCAPE_RADIUS)
+          {break;}
+      }
+
+      if (iter ==  max_iters) return Color::Black;
+
+      //Magic function
+      // sn = iter - log(log(dist)/log(4))/log(2);
+      sn = iter + 1 - log(log(dist)/log(2));
+
+      constexpr Uint32 start = 0, end = 0xFFFFFF;
+      constexpr Uint32 range = end - start;
+      Uint32 res = 0;
+      res = end - round((sn/(max_iters-1))*range);
+      return Color( (res<<8) + 0xFF );
+
+      // if (sn > max) {max = sn; cout<<"max : "<<max<<endl;}
+      // else cout<<log(abs(z))<<endl;
+      return Color::Black;
     }
 
-  }
 };
 
 void zoomin(Mandelbrot& plot){
