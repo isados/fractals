@@ -1,2 +1,3 @@
 main
-arkanoid
+*.o
+*.png

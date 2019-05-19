@@ -5,7 +5,8 @@
 #include <complex>
 #include <unordered_map>
 #include <math.h>
-#include "timer.cpp"
+#include "timer.hpp"
+#include "image.hpp"
 using namespace sf;
 using namespace std;
 
@@ -55,10 +56,10 @@ public:
     x_srt{-2}, x_stp{1}, y_srt{-1}, y_stp{1}
   {
     int index=0;
-    for(uint row=0; row < width ;row++)
-    for(uint colum=0; colum < height ;colum++)
+    for(uint y=0; y < height ;y++)
+    for(uint x=0; x < width ;x++)
       {
-        (*this)[index].position = Vector2f(row, colum);
+        (*this)[index].position = Vector2f(x, y);
         (*this)[index].color = Color::Black;
         index++;
       }
@@ -93,13 +94,13 @@ public:
 
       if (!threaded) {
         int index=0;
-        for(uint row=0; row < width ;row++)
-        for(uint colum=0; colum < height ;colum++)
-            (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},max_iterations);
+        for(uint y=0; y < height ;y++)
+        for(uint x=0; x < width ;x++)
+            (*this)[index++].color = retrieve_color({x_range[x],y_range[y]},max_iterations);
       }
       else{
           uint batch_size, rem;
-          batch_size = width / NUM_THREADS; rem = width % NUM_THREADS;
+          batch_size = height / NUM_THREADS; rem = height % NUM_THREADS;
 
           vector<thread> threads;
           uint scale = 0;
@@ -139,10 +140,10 @@ private:
   unordered_map <uint, Color> palette;
 
   inline void threaded_func(uint start, uint end){
-      uint index = start * height;
-      for(uint row = start; row < end ;row++)
-        for(uint colum=0; colum < height ;colum++)
-          (*this)[index++].color = retrieve_color({x_range[row],y_range[colum]},max_iterations);
+      uint index = start * width;
+      for(uint y = start; y < end ;y++)
+        for(uint x=0; x < width ;x++)
+          (*this)[index++].color = retrieve_color({x_range[x],y_range[y]},max_iterations);
     }
 
 inline  Color retrieve_color(const complex<ld> &c, uint max_iters){
@@ -245,6 +246,6 @@ int main(int argc, char** args)
         window.draw(img);
         window.display();
     }
-
+    image::write_image(img, WIDTH, HEIGHT);
     return 0;
 }
