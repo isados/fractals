@@ -148,7 +148,6 @@ private:
 
 inline  Color retrieve_color(const complex<ld> &c, uint max_iters){
     complex<ld> z{0};
-    constexpr uint limit = 300;
     for (uint iter = 0; iter < max_iters; iter++){
     // for (uint iter = 0; iter < limit; iter++){
       z = pow(z,2) + c;
@@ -222,17 +221,9 @@ int main(int argc, char** args)
     // Mandelbrot img(SIZE,stoul(i),-5,1,-2,2);
     Mandelbrot img(SIZE,stoul(i));
 
-    int iter=5;
-    int max_iterations = 5000;
 
     while (window.isOpen())
     {
-        // if (iter<=max_iterations){
-        //   img.generate_sequence(iter+=100);
-        //   cout<<iter<<endl;
-        // }
-
-        // zoomin(img);
 
         Event event;
         while (window.pollEvent(event))
